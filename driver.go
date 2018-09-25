@@ -59,3 +59,17 @@ type Driver interface {
 	// returns - the number of bytes writen and the first error encountered while writing, if any.
 	PutFile(string, io.Reader, bool) (int64, error)
 }
+
+// SiteDriver is an interface that extension driver for SITE command
+type SiteDriver interface {
+	// returns - list of available SITE subcommands for SITE HELP
+	SiteCommands() []string
+
+	// params  - subcommand, parameter
+	// returns - error
+	SiteHandle(string, string) error
+
+	// params  - subcommand
+	// returns - help message for subcommand
+	SiteHelp(string) string
+}
