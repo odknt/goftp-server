@@ -4,7 +4,10 @@
 
 package server
 
-import "io"
+import (
+	"io"
+	"os"
+)
 
 // DriverFactory is a driver factory to create driver. For each client that connects to the server, a new FTPDriver is required.
 // Create an implementation if this interface and provide it to FTPServer.
@@ -58,4 +61,13 @@ type Driver interface {
 	// params  - destination path, an io.Reader containing the file data
 	// returns - the number of bytes writen and the first error encountered while writing, if any.
 	PutFile(string, io.Reader, bool) (int64, error)
+}
+
+// SiteDriver is an interface that extends for SITE command
+type SiteDriver interface {
+	Driver
+
+	// params  - path
+	// returns - error
+	ChangeMode(string, os.FileMode) error
 }

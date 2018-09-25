@@ -55,6 +55,7 @@ var (
 		"RNFR": commandRnfr{},
 		"RNTO": commandRnto{},
 		"RMD":  commandRmd{},
+		"SITE": commandSite{},
 		"SIZE": commandSize{},
 		"STOR": commandStor{},
 		"STRU": commandStru{},
@@ -967,6 +968,44 @@ func (cmd commandConf) RequireAuth() bool {
 
 func (cmd commandConf) Execute(conn *Conn, param string) {
 	conn.writeMessage(550, "Action not taken")
+}
+
+// commandSite responds to the SITE FTP command.
+type commandSite struct{}
+
+func (cmd commandSite) IsExtend() bool {
+	return true
+}
+
+func (cmd commandSite) RequireParam() bool {
+	return true
+}
+
+func (cmd commandSite) RequireAuth() bool {
+	return true
+}
+
+func (cmd commandSite) Execute(conn *Conn, param string) {
+	if _, ok := conn.driver.(SiteDriver); !ok {
+		conn.writeMessage(504, "SITE is an obsolete command")
+		return
+	}
+
+	params := strings.SplitN(param, " ", 2)
+	subcmd := strings.ToUpper(params[0])
+
+	var p string
+	if len(params) == 2 {
+		p = params[1]
+	}
+
+	siteCmd, ok := siteCommands[subcmd]
+	if !ok {
+		conn.writeMessage(500, fmt.Sprintf("'SITE %s' not understood", subcmd))
+		return
+	}
+
+	siteCmd.Execute(conn, p)
 }
 
 // commandSize responds to the SIZE FTP command. It returns the size of the
