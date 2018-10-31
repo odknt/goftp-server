@@ -6,6 +6,7 @@ package server
 
 import "os"
 
+// FileInfo is interface that extends os.FileInfo for get file owner and group.
 type FileInfo interface {
 	os.FileInfo
 
