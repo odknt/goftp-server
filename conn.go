@@ -44,6 +44,7 @@ type Conn struct {
 	appendData    bool
 	closed        bool
 	tls           bool
+	filter        Filter
 }
 
 // LoginUser returns logged in user name.

@@ -7,6 +7,7 @@ package server
 import (
 	"fmt"
 	"log"
+	"net"
 	"strconv"
 	"strings"
 )
@@ -1187,6 +1188,13 @@ func (cmd commandUser) RequireAuth() bool {
 
 func (cmd commandUser) Execute(conn *Conn, param string) {
 	conn.reqUser = param
+	if conn.filter != nil {
+		sp := strings.SplitN(conn.conn.RemoteAddr().String(), ":", 2)
+		if err := conn.filter.CheckIP(net.ParseIP(sp[0]), param); err != nil {
+			conn.writeMessage(530, err.Error())
+			return
+		}
+	}
 	if conn.tls || conn.tlsConfig == nil {
 		conn.writeMessage(331, "User name ok, password required")
 	} else {
