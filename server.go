@@ -60,6 +60,9 @@ type Opts struct {
 
 	// A logger implementation, if nil the StdLogger is used
 	Logger Logger
+
+	// Access Filter
+	Filter Filter
 }
 
 // Server is the root of your FTP application. You should instantiate one
@@ -75,6 +78,7 @@ type Server struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	feats     string
+	filter    Filter
 }
 
 // ErrServerClosed is returned by ListenAndServe() or Serve() when a shutdown
@@ -120,6 +124,10 @@ func serverOptsWithDefaults(opts *Opts) *Opts {
 		newOpts.Logger = opts.Logger
 	}
 
+	if opts.Filter != nil {
+		newOpts.Filter = opts.Filter
+	}
+
 	newOpts.TLS = opts.TLS
 	newOpts.KeyFile = opts.KeyFile
 	newOpts.CertFile = opts.CertFile
@@ -154,6 +162,7 @@ func NewServer(opts *Opts) *Server {
 	s.Opts = opts
 	s.listenTo = net.JoinHostPort(opts.Hostname, strconv.Itoa(opts.Port))
 	s.logger = opts.Logger
+	s.filter = opts.Filter
 	return s
 }
 
@@ -172,6 +181,7 @@ func (server *Server) newConn(tcpConn net.Conn, driver Driver) *Conn {
 	c.server = server
 	c.sessionID = newSessionID()
 	c.logger = server.logger
+	c.filter = server.filter
 	c.tlsConfig = server.tlsConfig
 
 	driver.Init(c)
