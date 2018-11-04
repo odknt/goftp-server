@@ -1192,6 +1192,7 @@ func (cmd commandUser) Execute(conn *Conn, param string) {
 		sp := strings.SplitN(conn.conn.RemoteAddr().String(), ":", 2)
 		if err := conn.filter.CheckIP(net.ParseIP(sp[0]), param); err != nil {
 			conn.writeMessage(530, err.Error())
+			conn.Close()
 			return
 		}
 	}
