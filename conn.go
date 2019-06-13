@@ -138,6 +138,9 @@ func (conn *Conn) Close() {
 		conn.dataConn.Close()
 		conn.dataConn = nil
 	}
+	if conn.driver != nil {
+		conn.driver.Deinit()
+	}
 }
 
 func (conn *Conn) upgradeToTLS() error {
