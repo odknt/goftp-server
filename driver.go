@@ -30,10 +30,10 @@ type Driver interface {
 	//           requested path
 	ChangeDir(string) error
 
-	// params  - path, function on file or subdir found
+	// params  - path, function on file or subdir found, all flag
 	// returns - error
 	//           path
-	ListDir(string, func(FileInfo) error) error
+	ListDir(string, func(FileInfo) error, bool) error
 
 	// params  - path
 	// returns - nil if the directory was deleted or any error encountered
@@ -58,4 +58,21 @@ type Driver interface {
 	// params  - destination path, an io.Reader containing the file data
 	// returns - the number of bytes writen and the first error encountered while writing, if any.
 	PutFile(string, io.Reader, bool) (int64, error)
+
+	// returns - nil or any error encountered
+	Deinit() error
+}
+
+// SiteDriver is an interface that extension driver for SITE command
+type SiteDriver interface {
+	// returns - list of available SITE subcommands for SITE HELP
+	SiteCommands() []string
+
+	// params  - subcommand, parameter
+	// returns - error
+	SiteHandle(string, string) error
+
+	// params  - subcommand
+	// returns - help message for subcommand
+	SiteHelp(string) string
 }

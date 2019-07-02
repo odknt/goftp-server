@@ -19,8 +19,8 @@ func Version() string {
 	return "0.3.0"
 }
 
-// ServerOpts contains parameters for server.NewServer()
-type ServerOpts struct {
+// Opts contains parameters for server.NewServer()
+type Opts struct {
 	// The factory that will be used to create a new FTPDriver instance for
 	// each client connection. This is a mandatory option.
 	Factory DriverFactory
@@ -35,7 +35,7 @@ type ServerOpts struct {
 	Hostname string
 
 	// Public IP of the server
-	PublicIp string
+	PublicIP string
 
 	// Passive ports
 	PassivePorts string
@@ -60,6 +60,9 @@ type ServerOpts struct {
 
 	// A logger implementation, if nil the StdLogger is used
 	Logger Logger
+
+	// Access Filter
+	Filter Filter
 }
 
 // Server is the root of your FTP application. You should instantiate one
@@ -67,7 +70,7 @@ type ServerOpts struct {
 //
 // Always use the NewServer() method to create a new Server.
 type Server struct {
-	*ServerOpts
+	*Opts
 	listenTo  string
 	logger    Logger
 	listener  net.Listener
@@ -75,18 +78,19 @@ type Server struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	feats     string
+	filter    Filter
 }
 
 // ErrServerClosed is returned by ListenAndServe() or Serve() when a shutdown
 // was requested.
 var ErrServerClosed = errors.New("ftp: Server closed")
 
-// serverOptsWithDefaults copies an ServerOpts struct into a new struct,
+// serverOptsWithDefaults copies an Opts struct into a new struct,
 // then adds any default values that are missing and returns the new data.
-func serverOptsWithDefaults(opts *ServerOpts) *ServerOpts {
-	var newOpts ServerOpts
+func serverOptsWithDefaults(opts *Opts) *Opts {
+	var newOpts Opts
 	if opts == nil {
-		opts = &ServerOpts{}
+		opts = &Opts{}
 	}
 	if opts.Hostname == "" {
 		newOpts.Hostname = "::"
@@ -120,40 +124,45 @@ func serverOptsWithDefaults(opts *ServerOpts) *ServerOpts {
 		newOpts.Logger = opts.Logger
 	}
 
+	if opts.Filter != nil {
+		newOpts.Filter = opts.Filter
+	}
+
 	newOpts.TLS = opts.TLS
 	newOpts.KeyFile = opts.KeyFile
 	newOpts.CertFile = opts.CertFile
 	newOpts.ExplicitFTPS = opts.ExplicitFTPS
 
-	newOpts.PublicIp = opts.PublicIp
+	newOpts.PublicIP = opts.PublicIP
 	newOpts.PassivePorts = opts.PassivePorts
 
 	return &newOpts
 }
 
 // NewServer initialises a new FTP server. Configuration options are provided
-// via an instance of ServerOpts. Calling this function in your code will
+// via an instance of Opts. Calling this function in your code will
 // probably look something like this:
 //
 //     factory := &MyDriverFactory{}
-//     server  := server.NewServer(&server.ServerOpts{ Factory: factory })
+//     server  := server.NewServer(&server.Opts{ Factory: factory })
 //
 // or:
 //
 //     factory := &MyDriverFactory{}
-//     opts    := &server.ServerOpts{
+//     opts    := &server.Opts{
 //       Factory: factory,
 //       Port: 2000,
 //       Hostname: "127.0.0.1",
 //     }
 //     server  := server.NewServer(opts)
 //
-func NewServer(opts *ServerOpts) *Server {
+func NewServer(opts *Opts) *Server {
 	opts = serverOptsWithDefaults(opts)
 	s := new(Server)
-	s.ServerOpts = opts
+	s.Opts = opts
 	s.listenTo = net.JoinHostPort(opts.Hostname, strconv.Itoa(opts.Port))
 	s.logger = opts.Logger
+	s.filter = opts.Filter
 	return s
 }
 
@@ -172,6 +181,7 @@ func (server *Server) newConn(tcpConn net.Conn, driver Driver) *Conn {
 	c.server = server
 	c.sessionID = newSessionID()
 	c.logger = server.logger
+	c.filter = server.filter
 	c.tlsConfig = server.tlsConfig
 
 	driver.Init(c)
@@ -206,7 +216,7 @@ func (server *Server) ListenAndServe() error {
 	var err error
 	var curFeats = featCmds
 
-	if server.ServerOpts.TLS {
+	if server.Opts.TLS {
 		server.tlsConfig, err = simpleTLSConfig(server.CertFile, server.KeyFile)
 		if err != nil {
 			return err
@@ -214,7 +224,7 @@ func (server *Server) ListenAndServe() error {
 
 		curFeats += " AUTH TLS\n PBSZ\n PROT\n"
 
-		if server.ServerOpts.ExplicitFTPS {
+		if server.Opts.ExplicitFTPS {
 			listener, err = net.Listen("tcp", server.listenTo)
 		} else {
 			listener, err = tls.Listen("tcp", server.listenTo, server.tlsConfig)
