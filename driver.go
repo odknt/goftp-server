@@ -30,10 +30,10 @@ type Driver interface {
 	//           requested path
 	ChangeDir(string) error
 
-	// params  - path, function on file or subdir found
+	// params  - path, function on file or subdir found, all flag
 	// returns - error
 	//           path
-	ListDir(string, func(FileInfo) error) error
+	ListDir(string, func(FileInfo) error, bool) error
 
 	// params  - path
 	// returns - nil if the directory was deleted or any error encountered

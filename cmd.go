@@ -339,7 +339,8 @@ func (cmd commandList) RequireAuth() bool {
 }
 
 func (cmd commandList) Execute(conn *Conn, param string) {
-	path := conn.buildPath(parseListParam(param))
+	bp, all := parseListParam(param)
+	path := conn.buildPath(bp)
 	info, err := conn.driver.Stat(path)
 	if err != nil {
 		conn.writeMessage(550, err.Error())
@@ -355,7 +356,7 @@ func (cmd commandList) Execute(conn *Conn, param string) {
 		err = conn.driver.ListDir(path, func(f FileInfo) error {
 			files = append(files, f)
 			return nil
-		})
+		}, all)
 		if err != nil {
 			conn.writeMessage(550, err.Error())
 			return
@@ -368,21 +369,28 @@ func (cmd commandList) Execute(conn *Conn, param string) {
 	conn.sendOutofbandData(listFormatter(files).Detailed())
 }
 
-func parseListParam(param string) (path string) {
+func listUsage() {}
+
+func parseListParam(param string) (path string, all bool) {
 	if len(param) == 0 {
 		path = param
 	} else {
 		fields := strings.Fields(param)
 		i := 0
 		for _, field := range fields {
-			if !strings.HasPrefix(field, "-") {
-				break
+			if strings.HasPrefix(field, "-") {
+				for _, r := range []rune(field[1:]) {
+					switch r {
+					case 'a':
+						all = true
+					}
+				}
+				i = strings.LastIndex(param, " "+field) + len(field) + 1
 			}
-			i = strings.LastIndex(param, " "+field) + len(field) + 1
 		}
 		path = strings.TrimLeft(param[i:], " ") //Get all the path even with space inside
 	}
-	return path
+	return path, all
 }
 
 // commandNlst responds to the NLST FTP command. It allows the client to
@@ -402,7 +410,8 @@ func (cmd commandNlst) RequireAuth() bool {
 }
 
 func (cmd commandNlst) Execute(conn *Conn, param string) {
-	path := conn.buildPath(parseListParam(param))
+	bp, all := parseListParam(param)
+	path := conn.buildPath(bp)
 	info, err := conn.driver.Stat(path)
 	if err != nil {
 		conn.writeMessage(550, err.Error())
@@ -417,7 +426,7 @@ func (cmd commandNlst) Execute(conn *Conn, param string) {
 	err = conn.driver.ListDir(path, func(f FileInfo) error {
 		files = append(files, f)
 		return nil
-	})
+	}, all)
 	if err != nil {
 		conn.writeMessage(550, err.Error())
 		return
