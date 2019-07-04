@@ -659,6 +659,7 @@ func (cmd commandPwd) RequireAuth() bool {
 }
 
 func (cmd commandPwd) Execute(conn *Conn, param string) {
+	conn.namePrefix = conn.driver.PWD()
 	conn.writeMessage(257, "\""+conn.namePrefix+"\" is the current directory")
 }
 
