@@ -219,6 +219,9 @@ func (conn *Conn) writeMessageMultiline(code int, message string) (wrote int, er
 // Obviously they MUST NOT just read the path off disk. The probably want to
 // prefix the path with something to scope the users access to a sandbox.
 func (conn *Conn) buildPath(filename string) (fullPath string) {
+	if conn.namePrefix == "" {
+		conn.namePrefix = conn.driver.PWD()
+	}
 	if len(filename) > 0 && filename[0:1] == "/" {
 		fullPath = filepath.Clean(filename)
 	} else if len(filename) > 0 && filename != "-a" {
