@@ -67,12 +67,19 @@ func (conn *Conn) isLocalNetworkAddr(remote net.IP) bool {
 	if err != nil {
 		return false
 	}
+	// check whether private networks contain the remote address.
 	for _, addr := range addrs {
 		local, ok := addr.(*net.IPNet)
 		if !ok {
 			return false
 		}
 		if local.Contains(remote) {
+			return true
+		}
+	}
+	// check whether PrivateNetworks option specified networks contain the remote address.
+	for _, ipnet := range conn.server.PrivateNetworks() {
+		if ipnet.Contains(remote) {
 			return true
 		}
 	}

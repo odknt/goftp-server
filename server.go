@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
+	"sync"
 )
 
 // Version returns the library version
@@ -63,6 +65,10 @@ type Opts struct {
 
 	// Access Filter
 	Filter Filter
+
+	// Private networks (comma-separated CIDR string)
+	// Returns local ip address instead of PublicIP for client ip contained specified networks
+	PrivateNetworks string
 }
 
 // Server is the root of your FTP application. You should instantiate one
@@ -71,14 +77,16 @@ type Opts struct {
 // Always use the NewServer() method to create a new Server.
 type Server struct {
 	*Opts
-	listenTo  string
-	logger    Logger
-	listener  net.Listener
-	tlsConfig *tls.Config
-	ctx       context.Context
-	cancel    context.CancelFunc
-	feats     string
-	filter    Filter
+	listenTo        string
+	logger          Logger
+	listener        net.Listener
+	tlsConfig       *tls.Config
+	ctx             context.Context
+	cancel          context.CancelFunc
+	feats           string
+	filter          Filter
+	privateNetworks []*net.IPNet
+	lock            sync.RWMutex
 }
 
 // ErrServerClosed is returned by ListenAndServe() or Serve() when a shutdown
@@ -135,6 +143,7 @@ func serverOptsWithDefaults(opts *Opts) *Opts {
 
 	newOpts.PublicIP = opts.PublicIP
 	newOpts.PassivePorts = opts.PassivePorts
+	newOpts.PrivateNetworks = opts.PrivateNetworks
 
 	return &newOpts
 }
@@ -200,6 +209,45 @@ func simpleTLSConfig(certFile, keyFile string) (*tls.Config, error) {
 		return nil, err
 	}
 	return config, nil
+}
+
+// PrivateNetworks returns private networks parsed from Opts.PrivateNetworks.
+func (server *Server) PrivateNetworks() []*net.IPNet {
+	server.lock.RLock()
+	defer server.lock.RUnlock()
+
+	if server.privateNetworks == nil {
+		cidrs := strings.Split(server.Opts.PrivateNetworks, ",")
+		if len(cidrs) == 0 {
+			server.privateNetworks = []*net.IPNet{}
+			return server.privateNetworks
+		}
+		nets := make([]*net.IPNet, 0, len(cidrs))
+		for _, cidrstr := range cidrs {
+			_, ipnet, err := net.ParseCIDR(cidrstr)
+			if err != nil {
+				continue
+			}
+			nets = append(nets, ipnet)
+		}
+		server.privateNetworks = nets
+	}
+	return server.privateNetworks
+}
+
+// SetOpts sets options.
+func (server *Server) SetOpts(opts *Opts) error {
+	if opts == nil {
+		return nil
+	}
+	server.lock.Lock()
+	defer server.lock.Unlock()
+
+	if server.Opts.PrivateNetworks != opts.PrivateNetworks {
+		server.Opts.PrivateNetworks = opts.PrivateNetworks
+		server.privateNetworks = nil
+	}
+	return nil
 }
 
 // ListenAndServe asks a new Server to begin accepting client connections. It
