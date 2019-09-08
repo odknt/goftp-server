@@ -62,7 +62,28 @@ func (conn *Conn) PublicIP() string {
 	return conn.server.PublicIP
 }
 
+func (conn *Conn) isLocalNetworkAddr(remote net.IP) bool {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return false
+	}
+	for _, addr := range addrs {
+		local, ok := addr.(*net.IPNet)
+		if !ok {
+			return false
+		}
+		if local.Contains(remote) {
+			return true
+		}
+	}
+	return false
+}
+
 func (conn *Conn) passiveListenIP() string {
+	remote, ok := conn.conn.RemoteAddr().(*net.TCPAddr)
+	if ok && conn.isLocalNetworkAddr(remote.IP) {
+		return conn.conn.LocalAddr().String()
+	}
 	if len(conn.PublicIP()) > 0 {
 		return conn.PublicIP()
 	}
