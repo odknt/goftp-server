@@ -64,6 +64,9 @@ type Driver interface {
 
 	// returns - nil or any error encountered
 	Deinit() error
+
+	Login(error)
+	Logout()
 }
 
 // SiteDriver is an interface that extension driver for SITE command

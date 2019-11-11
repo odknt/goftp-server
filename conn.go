@@ -160,6 +160,9 @@ func (conn *Conn) Serve() {
 
 // Close will manually close this connection, even if the client isn't ready.
 func (conn *Conn) Close() {
+	if conn.closed {
+		return
+	}
 	conn.conn.Close()
 	conn.closed = true
 	if conn.dataConn != nil {
@@ -167,6 +170,9 @@ func (conn *Conn) Close() {
 		conn.dataConn = nil
 	}
 	if conn.driver != nil {
+		if conn.IsLogin() {
+			conn.driver.Logout()
+		}
 		conn.driver.Deinit()
 	}
 }

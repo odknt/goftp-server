@@ -5,6 +5,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -557,6 +558,7 @@ func (cmd commandPass) Execute(conn *Conn, param string) {
 	ok, err := conn.server.Auth.CheckPasswd(conn.reqUser, param)
 	if err != nil {
 		conn.writeMessage(550, "Checking password error")
+		conn.driver.Login(errors.New("checking password error: " + conn.reqUser))
 		return
 	}
 
@@ -564,8 +566,10 @@ func (cmd commandPass) Execute(conn *Conn, param string) {
 		conn.user = conn.reqUser
 		conn.reqUser = ""
 		conn.writeMessage(230, "Password ok, continue")
+		conn.driver.Login(nil)
 	} else {
 		conn.writeMessage(530, "Incorrect password, not logged in")
+		conn.driver.Login(errors.New("incorrect password, not logged in: " + conn.reqUser))
 	}
 }
 
