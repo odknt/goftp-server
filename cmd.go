@@ -11,7 +11,11 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 )
+
+// GMT time zone
+var tzGMT = time.FixedZone("GMT", 0)
 
 // Command represents a FTP command.
 type Command interface {
@@ -456,7 +460,7 @@ func (cmd commandMdtm) Execute(conn *Conn, param string) {
 	path := conn.buildPath(param)
 	stat, err := conn.driver.Stat(path)
 	if err == nil {
-		conn.writeMessage(213, stat.ModTime().Format("20060102150405"))
+		conn.writeMessage(213, stat.ModTime().In(tzGMT).Format("20060102150405"))
 	} else {
 		conn.writeMessage(450, "File not available")
 	}
